@@ -5,6 +5,16 @@ const sql = require("../db/db");
 require("dotenv").config();
 
 const apiHost = process.env.API_HOST || "http://localhost:5005";
+const normalizePhotoUrl = (value) => {
+  if (!value || typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return trimmed;
+  const base = apiHost.replace(/\/+$/, "");
+  const path = trimmed.replace(/^\/+/, "");
+  return `${base}/${path}`;
+};
 const voteSchema = Joi.object({
   id_candidato: Joi.number().integer().positive().required(),
 });
@@ -26,7 +36,7 @@ router.get("/getCandidatos", async (req, res) => {
     const results = await sql.functions.getRows("candidatos");
     const candidatos = results.map((candidato) => ({
       ...candidato,
-      foto_url: `${apiHost}/${candidato.foto_url}`,
+      foto_url: normalizePhotoUrl(candidato.foto_url),
     }));
 
     res.json(candidatos);
