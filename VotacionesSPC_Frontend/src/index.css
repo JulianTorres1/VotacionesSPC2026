@@ -1,0 +1,19 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Nunito:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: "Nunito", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Montserrat", "Nunito", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", sans-serif;
+  }
+}
