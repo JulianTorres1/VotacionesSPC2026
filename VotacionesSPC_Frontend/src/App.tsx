@@ -122,7 +122,10 @@ const handleImageError = (event: SyntheticEvent<HTMLImageElement>) => {
 };
 
 const createSessionId = () => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -167,7 +170,9 @@ const loadPersistedVotingState = (): PersistedVotingState => {
 
     return {
       selectedCourse:
-        typeof parsed?.selectedCourse === "string" ? parsed.selectedCourse : null,
+        typeof parsed?.selectedCourse === "string"
+          ? parsed.selectedCourse
+          : null,
       votingStage: isVotingStage(parsed?.votingStage)
         ? parsed.votingStage
         : "course",
@@ -193,7 +198,10 @@ const loadPersistedVotingState = (): PersistedVotingState => {
 const persistVotingState = (state: PersistedVotingState) => {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(VOTING_STATE_STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(
+      VOTING_STATE_STORAGE_KEY,
+      JSON.stringify(state),
+    );
   } catch {
     // Ignore storage failures to keep voting flow operational.
   }
@@ -242,44 +250,41 @@ function App() {
     pendingVote,
   ]);
 
-  const fetchCandidates = useCallback(
-    (signal?: AbortSignal) => {
-      if (signal?.aborted) return;
-      setLoadingCandidates(true);
-      setRequestError(null);
-      if (!apiBaseUrl) {
-        setRequestError("VITE_API_URL no está configurada correctamente.");
+  const fetchCandidates = useCallback((signal?: AbortSignal) => {
+    if (signal?.aborted) return;
+    setLoadingCandidates(true);
+    setRequestError(null);
+    if (!apiBaseUrl) {
+      setRequestError("VITE_API_URL no está configurada correctamente.");
+      setLoadingCandidates(false);
+      return;
+    }
+
+    axios
+      .get(`${apiBaseUrl}/getCandidatos`, {
+        signal,
+        timeout: 10000,
+      })
+      .then((response) => {
+        const normalizedCandidates = Array.isArray(response.data)
+          ? response.data.map((candidate) => ({
+              ...candidate,
+              foto_url: normalizeImageUrl(candidate.foto_url),
+            }))
+          : [];
+
+        setCandidates(normalizedCandidates);
+      })
+      .catch((error) => {
+        if (axios.isCancel(error)) return;
+        setRequestError(
+          "No se pudieron cargar los candidatos. Verifica conexión con el backend y reintenta.",
+        );
+      })
+      .finally(() => {
         setLoadingCandidates(false);
-        return;
-      }
-
-      axios
-        .get(`${apiBaseUrl}/getCandidatos`, {
-          signal,
-          timeout: 10000,
-        })
-        .then((response) => {
-          const normalizedCandidates = Array.isArray(response.data)
-            ? response.data.map((candidate) => ({
-                ...candidate,
-                foto_url: normalizeImageUrl(candidate.foto_url),
-              }))
-            : [];
-
-          setCandidates(normalizedCandidates);
-        })
-        .catch((error) => {
-          if (axios.isCancel(error)) return;
-          setRequestError(
-            "No se pudieron cargar los candidatos. Verifica conexión con el backend y reintenta.",
-          );
-        })
-        .finally(() => {
-          setLoadingCandidates(false);
-        });
-    },
-    [],
-  );
+      });
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -311,7 +316,9 @@ function App() {
 
   const isCandidateAvailableForCurrentStage = useCallback(
     (candidateId: string) =>
-      filteredCandidates.some((candidate) => candidate.id_candidato === candidateId),
+      filteredCandidates.some(
+        (candidate) => candidate.id_candidato === candidateId,
+      ),
     [filteredCandidates],
   );
 
@@ -408,7 +415,9 @@ function App() {
           );
           return;
         }
-        setVoteError("No se pudo registrar el voto. Reintenta de forma segura.");
+        setVoteError(
+          "No se pudo registrar el voto. Reintenta de forma segura.",
+        );
       })
       .finally(() => {
         setIsSubmittingVote(false);
@@ -432,44 +441,44 @@ function App() {
         <Route
           path="/"
           element={
-          <div
-            className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative isolate"
-            style={{ backgroundImage: `url(${bgImage})` }}
-          >
-            <header className="relative z-10 bg-white/85 border-b border-white/70 shadow-lg">
-              <div className="container mx-auto px-4">
-                <div className="flex items-center justify-between h-20">
-                  <div className="flex items-center gap-6">
-                    <img
-                      src={LogoSalesianos}
-                      alt="Logo Salesianos"
-                      className="w-auto h-16"
-                    />
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-[0.2em] text-primary-dark/70">
-                        Democracia escolar
+            <div
+              className="min-h-screen flex flex-col bg-cover bg-center bg-no-repeat relative isolate"
+              style={{ backgroundImage: `url(${bgImage})` }}
+            >
+              <header className="relative z-10 bg-white/85 border-b border-white/70 shadow-lg">
+                <div className="container mx-auto px-4">
+                  <div className="flex items-center justify-between h-20">
+                    <div className="flex items-center gap-6">
+                      <img
+                        src={LogoSalesianos}
+                        alt="Logo Salesianos"
+                        className="w-auto h-16"
+                      />
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase tracking-[0.2em] text-primary-dark/70">
+                          Democracia escolar
+                        </p>
+                        <h1 className="text-2xl md:text-3xl font-display font-extrabold text-primary">
+                          Sistema de Votación Estudiantil 2026
+                        </h1>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm uppercase tracking-[0.35em] text-primary-dark/70">
+                        Somos
                       </p>
-                      <h1 className="text-2xl md:text-3xl font-display font-extrabold text-primary">
-                        Sistema de Votación Estudiantil 2026
-                      </h1>
+                      <p className="text-2xl font-display font-extrabold text-primary">
+                        CON
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm uppercase tracking-[0.35em] text-primary-dark/70">
-                      Somos
-                    </p>
-                    <p className="text-2xl font-display font-extrabold text-primary">
-                      CON
-                    </p>
-                  </div>
                 </div>
-              </div>
-            </header>
+              </header>
 
-            <main className="relative z-10 flex-grow max-w-7xl mx-auto px-4 py-10">
-              {requestError && (
-                <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
-                  <p>{requestError}</p>
+              <main className="relative z-10 flex-grow max-w-7xl mx-auto px-4 py-10">
+                {requestError && (
+                  <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
+                    <p>{requestError}</p>
                     <button
                       type="button"
                       onClick={() => fetchCandidates()}
@@ -488,7 +497,10 @@ function App() {
                         type="button"
                         disabled={isSubmittingVote}
                         onClick={() =>
-                          handleVote(pendingVote.candidateId, pendingVote.idempotencyKey)
+                          handleVote(
+                            pendingVote.candidateId,
+                            pendingVote.idempotencyKey,
+                          )
                         }
                         className="mt-3 rounded-md bg-amber-600 px-4 py-2 text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
@@ -565,11 +577,11 @@ function App() {
                               Etapa de votación
                             </p>
                             <h2 className="text-3xl md:text-4xl font-display font-extrabold text-primary-dark">
-                            {votingStage === "personero"
-                              ? "Selecciona tu personero"
-                              : votingStage === "consejo"
-                                ? "Selecciona tu representante al Consejo"
-                                : "Selecciona tu Representante de Curso"}
+                              {votingStage === "personero"
+                                ? "Selecciona tu personero"
+                                : votingStage === "consejo"
+                                  ? "Selecciona tu representante al Consejo"
+                                  : "Selecciona tu Representante de Curso"}
                             </h2>
                           </div>
                           <button
@@ -586,46 +598,45 @@ function App() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {filteredCandidates.map((candidate) => (
-                              <div
-                                key={candidate.id_candidato}
-                                className={`${getCardBackgroundColor(candidate.nombre)} rounded-3xl shadow-lg overflow-hidden border-2 border-white/70 transition-transform duration-200 hover:-translate-y-1`}
-                              >
-                                <div className="w-full h-48 flex justify-center items-center bg-white/70">
-                                  <img
-                                    src={candidate.foto_url}
-                                    alt={candidate.nombre}
-                                    loading="lazy"
-                                    className="w-full h-full object-contain"
-                                    style={{ aspectRatio: "4/3" }}
-                                    onError={handleImageError}
-                                  />
-                                </div>
-                                <div className="p-4">
-                                  <h3 className="text-base font-display font-semibold text-black">
-                                    {candidate.nombre}
-                                  </h3>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {candidate.biografia}
-                                  </p>
-                                  <button
-                                    className="mt-4 w-full bg-gradient-to-r from-primary to-secondary-orange text-white py-2.5 px-3 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:shadow-none"
-                                    disabled={isSubmittingVote}
-                                    onClick={() =>
-                                      handleVote(candidate.id_candidato)
-                                    }
-                                  >
-                                    <Vote id="votar" className="w-4 h-4" />
-                                    {isSubmittingVote
-                                      ? "Enviando voto..."
-                                      : "Votar"}
-                                  </button>
-                                </div>
+                            <div
+                              key={candidate.id_candidato}
+                              className={`${getCardBackgroundColor(candidate.nombre)} rounded-3xl shadow-lg overflow-hidden border-2 border-white/70 transition-transform duration-200 hover:-translate-y-1`}
+                            >
+                              <div className="w-full h-48 flex justify-center items-center bg-white/70">
+                                <img
+                                  src={candidate.foto_url}
+                                  alt={candidate.nombre}
+                                  loading="lazy"
+                                    className="w-[9.5rem] h-[9.5rem] rounded-full object-cover"
+                                  onError={handleImageError}
+                                />
                               </div>
-                            ))}
+                              <div className="p-4">
+                                <h3 className="text-base font-display font-semibold text-black">
+                                  {candidate.nombre}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {candidate.biografia}
+                                </p>
+                                <button
+                                  className="mt-4 w-full bg-gradient-to-r from-primary to-secondary-orange text-white py-2.5 px-3 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:shadow-none"
+                                  disabled={isSubmittingVote}
+                                  onClick={() =>
+                                    handleVote(candidate.id_candidato)
+                                  }
+                                >
+                                  <Vote id="votar" className="w-4 h-4" />
+                                  {isSubmittingVote
+                                    ? "Enviando voto..."
+                                    : "Votar"}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                           {!filteredCandidates.length && (
                             <div className="col-span-full rounded-2xl border border-white/60 bg-white/90 p-4 text-primary-dark shadow-md">
-                              No hay candidatos disponibles para esta etapa. Verifica
-                              la configuración del backend.
+                              No hay candidatos disponibles para esta etapa.
+                              Verifica la configuración del backend.
                             </div>
                           )}
                         </div>
