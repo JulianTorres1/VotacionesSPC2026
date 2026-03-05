@@ -158,4 +158,43 @@ describe("App", () => {
       secondConfig.headers["Idempotency-Key"],
     );
   });
+
+  it("bloquea reiniciar la votación por 30 segundos al completar el proceso", async () => {
+    const user = userEvent.setup();
+    mockedAxios.get.mockResolvedValueOnce({ data: candidatesFixture });
+    mockedAxios.post
+      .mockResolvedValueOnce({ data: { ok: true } })
+      .mockResolvedValueOnce({ data: { ok: true } })
+      .mockResolvedValueOnce({ data: { ok: true } });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Selecciona tu curso")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("3°"));
+    await user.click(screen.getAllByText("Votar")[0]);
+    await waitFor(() => {
+      expect(screen.getByText("Selecciona tu personero")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getAllByText("Votar")[0]);
+    await waitFor(() => {
+      expect(
+        screen.getByText("Selecciona tu representante al Consejo"),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getAllByText("Votar")[0]);
+    await waitFor(() => {
+      expect(screen.getByText("¡Votación Completada!")).toBeInTheDocument();
+    });
+
+    const acceptButton = screen.getByRole("button", {
+      name: /Aceptar/,
+    });
+    expect(acceptButton).toBeDisabled();
+    expect(acceptButton).toHaveTextContent("Aceptar (30s)");
+  });
 });

@@ -50,6 +50,7 @@ type PersistedVotingState = {
   selectedCourse: string | null;
   votingStage: VotingStage;
   votingComplete: boolean;
+  cooldownEndsAt: number | null;
   sessionId: string;
   submittedVotes: SubmittedVotes;
   pendingVote: PendingVote | null;
@@ -69,6 +70,7 @@ const courses: Course[] = [
 
 const API_URL = import.meta.env.VITE_API_URL;
 const VOTING_STATE_STORAGE_KEY = "votaciones_spc_voting_state_v1";
+const VOTING_COOLDOWN_MS = 25_000;
 const validStages: VotingStage[] = ["course", "personero", "consejo"];
 
 const normalizeUrl = (value?: string | null) => {
@@ -139,6 +141,7 @@ const loadPersistedVotingState = (): PersistedVotingState => {
     selectedCourse: null,
     votingStage: "course",
     votingComplete: false,
+    cooldownEndsAt: null,
     sessionId: createSessionId(),
     submittedVotes: {},
     pendingVote: null,
@@ -177,6 +180,11 @@ const loadPersistedVotingState = (): PersistedVotingState => {
         ? parsed.votingStage
         : "course",
       votingComplete: Boolean(parsed?.votingComplete),
+      cooldownEndsAt:
+        typeof parsed?.cooldownEndsAt === "number" &&
+        Number.isFinite(parsed.cooldownEndsAt)
+          ? parsed.cooldownEndsAt
+          : null,
       sessionId:
         typeof parsed?.sessionId === "string" && parsed.sessionId
           ? parsed.sessionId
@@ -220,6 +228,13 @@ function App() {
   const [votingComplete, setVotingComplete] = useState(
     initialPersistedState.votingComplete,
   );
+  const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(
+    initialPersistedState.cooldownEndsAt &&
+      initialPersistedState.cooldownEndsAt > Date.now()
+      ? initialPersistedState.cooldownEndsAt
+      : null,
+  );
+  const [cooldownSecondsLeft, setCooldownSecondsLeft] = useState(0);
   const [loadingCandidates, setLoadingCandidates] = useState(true);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
@@ -237,6 +252,7 @@ function App() {
       selectedCourse,
       votingStage,
       votingComplete,
+      cooldownEndsAt,
       sessionId,
       submittedVotes,
       pendingVote,
@@ -245,10 +261,32 @@ function App() {
     selectedCourse,
     votingStage,
     votingComplete,
+    cooldownEndsAt,
     sessionId,
     submittedVotes,
     pendingVote,
   ]);
+
+  useEffect(() => {
+    if (!votingComplete || !cooldownEndsAt) {
+      setCooldownSecondsLeft(0);
+      return;
+    }
+
+    const syncCountdown = () => {
+      const remainingMs = cooldownEndsAt - Date.now();
+      if (remainingMs <= 0) {
+        setCooldownEndsAt(null);
+        setCooldownSecondsLeft(0);
+        return;
+      }
+      setCooldownSecondsLeft(Math.ceil(remainingMs / 1000));
+    };
+
+    syncCountdown();
+    const intervalId = window.setInterval(syncCountdown, 250);
+    return () => window.clearInterval(intervalId);
+  }, [votingComplete, cooldownEndsAt]);
 
   const fetchCandidates = useCallback((signal?: AbortSignal) => {
     if (signal?.aborted) return;
@@ -312,6 +350,7 @@ function App() {
       return;
     }
     setVotingComplete(true);
+    setCooldownEndsAt(Date.now() + VOTING_COOLDOWN_MS);
   }, [votingStage]);
 
   const isCandidateAvailableForCurrentStage = useCallback(
@@ -425,7 +464,10 @@ function App() {
   };
 
   const resetVotingSession = () => {
+    if (cooldownSecondsLeft > 0) return;
     setVotingComplete(false);
+    setCooldownEndsAt(null);
+    setCooldownSecondsLeft(0);
     setSelectedCourse(null);
     setVotingStage("course");
     setVoteError(null);
@@ -520,12 +562,24 @@ function App() {
                         Has completado exitosamente tu proceso de votación.
                         Gracias por participar en la democracia estudiantil.
                       </p>
+                      {cooldownSecondsLeft > 0 && (
+                        <p className="text-sm text-primary-dark/70 mb-4">
+                          Podrás iniciar una nueva votación en{" "}
+                          <span className="font-bold">
+                            {cooldownSecondsLeft} s
+                          </span>
+                          .
+                        </p>
+                      )}
                       <button
                         onClick={resetVotingSession}
-                        className="bg-gradient-to-r from-primary to-secondary-orange text-white py-2 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
+                        disabled={cooldownSecondsLeft > 0}
+                        className="bg-gradient-to-r from-primary to-secondary-orange text-white py-2 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
                         id="aceptar"
                       >
-                        Aceptar
+                        {cooldownSecondsLeft > 0
+                          ? `Aceptar (${cooldownSecondsLeft}s)`
+                          : "Aceptar"}
                       </button>
                     </div>
                   </div>
@@ -607,7 +661,7 @@ function App() {
                                   src={candidate.foto_url}
                                   alt={candidate.nombre}
                                   loading="lazy"
-                                    className="w-[9.5rem] h-[9.5rem] rounded-full object-cover"
+                                  className="w-[9.5rem] h-[9.5rem] rounded-full object-cover"
                                   onError={handleImageError}
                                 />
                               </div>
